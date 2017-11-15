@@ -1,5 +1,5 @@
-hash: 4b775a177423520a9a12ca059a21739b5d7b395c4298122c5465c46e09c5d3d6
-updated: 2017-11-15T20:44:35.249801928+01:00
+hash: 4464f9dad8007965351fcc7211c4a2a61cfdc6a0fa09c6de44eff127ed506fdb
+updated: 2017-11-15T23:33:31.883741537+01:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 782f4967f2dc4564575ca782fe2d04090b5faca8
@@ -79,12 +79,13 @@ imports:
 - name: golang.org/x/net
   version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
-  - context
-  - context/ctxhttp
+  - html
+  - html/atom
   - http2
   - http2/hpack
   - idna
   - lex/httplex
+  - websocket
 - name: golang.org/x/sys
   version: 7ddbeae9ae08c6a06a59597f0c9edbc5ff2444ce
   subpackages:
