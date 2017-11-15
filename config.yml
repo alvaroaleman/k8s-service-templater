@@ -1,0 +1,2 @@
+template: template.tmpl
+template_destination: template.rendered

@@ -10,6 +10,8 @@ import (
 	"text/template"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -17,18 +19,29 @@ import (
 
 func main() {
 	var kubeconfig *string
-	var tmplFile *string
+	var configPath *string
 	if home := homeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
-	tmplFile = flag.String("template", "template.tmpl", "The template to render")
+	configPath = flag.String("config", "config.yml", "The application confid")
 	flag.Parse()
 
-	tmplRaw, err := ioutil.ReadFile(*tmplFile)
+	appConfigRaw, err := ioutil.ReadFile(*configPath)
 	if err != nil {
-		log.Fatalf("Error reading template file %s", tmplFile)
+		log.Fatalf("Error reading config file: '%s'", err)
+	}
+
+	var appConfig AppConfig
+	err = yaml.Unmarshal(appConfigRaw, &appConfig)
+	if err != nil {
+		log.Fatalf("Errir parsing config file: '%s'", err)
+	}
+
+	tmplRaw, err := ioutil.ReadFile(appConfig.Template)
+	if err != nil {
+		log.Fatalf("Error reading template file %s", appConfig.Template)
 	}
 	tmpl := string(tmplRaw)
 	templateParsed := template.Must(template.New("template").Parse(tmpl))
@@ -45,26 +58,42 @@ func main() {
 		panic(err.Error())
 	}
 
+	err = run(appConfig, clientset, templateParsed)
+	if err != nil {
+		log.Fatalf("Error running app: '%s'", err)
+	}
+
+}
+
+func run(appConfig AppConfig, clientset *kubernetes.Clientset, template *template.Template) error {
 	var b bytes.Buffer
 	var oldParsedTemplate string
 	var newParsedTemplate string
+
 	for {
 		services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
-		err = templateParsed.Execute(&b, services)
+		err = template.Execute(&b, services)
 		newParsedTemplate = b.String()
 		if err != nil {
 			log.Println("Error executing template:", err)
 		}
 		if newParsedTemplate != oldParsedTemplate {
 			oldParsedTemplate = newParsedTemplate
-			log.Print(oldParsedTemplate)
+			err = ioutil.WriteFile(appConfig.TemplateDestination, []byte(oldParsedTemplate), 0644)
+			if err != nil {
+				log.Println("Error writing template: '%s'")
+			} else {
+				log.Print("Wrote new config..")
+			}
 		}
 		b.Reset()
 		time.Sleep(10 * time.Second)
 	}
+
+	return nil
 
 }
 
