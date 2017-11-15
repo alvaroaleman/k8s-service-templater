@@ -49,15 +49,16 @@ func main() {
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("Error parsing config: '%s'", err.Error())
 	}
 
 	// create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		log.Fatalf("Error parsing config: '%s'", err.Error())
 	}
 
+	log.Printf("Successfully started")
 	err = run(appConfig, clientset, templateParsed)
 	if err != nil {
 		log.Fatalf("Error running app: '%s'", err)
@@ -73,7 +74,7 @@ func run(appConfig AppConfig, clientset *kubernetes.Clientset, template *templat
 	for {
 		services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
 		if err != nil {
-			panic(err.Error())
+			log.Printf("Error getting services: '%s'", err.Error())
 		}
 		err = template.Execute(&b, services)
 		newParsedTemplate = b.String()
@@ -84,9 +85,9 @@ func run(appConfig AppConfig, clientset *kubernetes.Clientset, template *templat
 			oldParsedTemplate = newParsedTemplate
 			err = ioutil.WriteFile(appConfig.TemplateDestination, []byte(oldParsedTemplate), 0644)
 			if err != nil {
-				log.Println("Error writing template: '%s'")
+				log.Println("Error writing template: '%s'", err)
 			} else {
-				log.Print("Wrote new config..")
+				log.Print("Wrote new template..")
 			}
 		}
 		b.Reset()
