@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"text/template"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,6 +31,7 @@ func main() {
 		log.Fatalf("Error reading template file %s", tmplFile)
 	}
 	tmpl := string(tmplRaw)
+	templateParsed := template.Must(template.New("template").Parse(tmpl))
 
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -41,14 +44,26 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	t := template.Must(template.New("template").Parse(tmpl))
-	err = t.Execute(os.Stdout, services)
-	if err != nil {
-		log.Println("Error executing template:", err)
+
+	var b bytes.Buffer
+	var oldParsedTemplate string
+	var newParsedTemplate string
+	for {
+		services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+		err = templateParsed.Execute(&b, services)
+		newParsedTemplate = b.String()
+		if err != nil {
+			log.Println("Error executing template:", err)
+		}
+		if newParsedTemplate != oldParsedTemplate {
+			oldParsedTemplate = newParsedTemplate
+			log.Print(oldParsedTemplate)
+		}
+		b.Reset()
+		time.Sleep(10 * time.Second)
 	}
 
 }
