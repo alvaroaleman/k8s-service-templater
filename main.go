@@ -1,25 +1,12 @@
-/*
-Copyright 2016 The Kubernetes Authors.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-// Note: the example only works with the code within the same release/branch.
 package main
 
 import (
 	"flag"
-	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
-	"time"
+	"text/template"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -28,12 +15,20 @@ import (
 
 func main() {
 	var kubeconfig *string
+	var tmplFile *string
 	if home := homeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
+	tmplFile = flag.String("template", "template.tmpl", "The template to render")
 	flag.Parse()
+
+	tmplRaw, err := ioutil.ReadFile(*tmplFile)
+	if err != nil {
+		log.Fatalf("Error reading template file %s", tmplFile)
+	}
+	tmpl := string(tmplRaw)
 
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
@@ -46,15 +41,16 @@ func main() {
 	if err != nil {
 		panic(err.Error())
 	}
-	for {
-		services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-		fmt.Printf("There are %d services in the cluster\n", len(services.Items))
-
-		time.Sleep(10 * time.Second)
+	services, err := clientset.CoreV1().Services("").List(metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
 	}
+	t := template.Must(template.New("template").Parse(tmpl))
+	err = t.Execute(os.Stdout, services)
+	if err != nil {
+		log.Println("Error executing template:", err)
+	}
+
 }
 
 func homeDir() string {
