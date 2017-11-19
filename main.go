@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -58,15 +60,18 @@ func main() {
 		log.Fatalf("Error parsing config: '%s'", err.Error())
 	}
 
+	cmdSlice := strings.Split(appConfig.Command, " ")
+	cmd := exec.Command(cmdSlice[0], cmdSlice[1:]...)
+
 	log.Printf("Successfully started")
-	err = run(appConfig, clientset, templateParsed)
+	err = run(appConfig, clientset, templateParsed, cmd)
 	if err != nil {
 		log.Fatalf("Error running app: '%s'", err)
 	}
 
 }
 
-func run(appConfig AppConfig, clientset *kubernetes.Clientset, template *template.Template) error {
+func run(appConfig AppConfig, clientset *kubernetes.Clientset, template *template.Template, cmd *exec.Cmd) error {
 	var b bytes.Buffer
 	var oldParsedTemplate string
 	var newParsedTemplate string
@@ -88,6 +93,10 @@ func run(appConfig AppConfig, clientset *kubernetes.Clientset, template *templat
 				log.Println("Error writing template: '%s'", err)
 			} else {
 				log.Print("Wrote new template..")
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					log.Printf("Error running command '%s', output:\n%s", cmd, string(out))
+				}
 			}
 		}
 		b.Reset()
