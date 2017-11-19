@@ -4,7 +4,7 @@ defaults
 {{range .Items}}{{ if eq .Spec.Type "NodePort" }}{{range .Spec.Ports }}
 frontend port-{{.NodePort}}-in
   bind :::{{.NodePort}}
-  default_backend backend-{{.NodePort}}-out
+  default_backend localhost-{{.NodePort}}-out
 
 backend port-{{.NodePort}}-out
   server localhost-{{.NodePort}} 127.0.0.1:{{.NodePort}}
