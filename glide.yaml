@@ -1,0 +1,5 @@
+package: github.com/alvaroaleman/k8s-service-templater
+import:
+- package: k8s.io/client-go
+  version: v5.0.1
+- package: gopkg.in/yaml.v2

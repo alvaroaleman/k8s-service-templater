@@ -1,0 +1,3 @@
+template: template.tmpl
+template_destination: template.rendered
+command: touch /tmp/touch1
